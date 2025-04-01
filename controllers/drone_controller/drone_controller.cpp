@@ -13,6 +13,7 @@
 #include <webots/Joystick.hpp>
 #include <webots/Gyro.hpp>
 #include <webots/InertialUnit.hpp>
+#include <webots/GPS.hpp>
 #include <iostream>
 #include "math_lib.hpp"
 #include "PID.hpp"
@@ -87,6 +88,11 @@ int main(int argc, char **argv) {
 
   InertialUnit *imu = robot->getInertialUnit("imu");
   imu->enable(timeStep);
+
+  GPS *gps  = robot->getGPS("gps");
+  gps->enable(timeStep);
+
+
 
   /**
    * @brief 启用电机
@@ -166,10 +172,10 @@ int main(int argc, char **argv) {
     // // 更新控制输出（计算角速度设定值）
     Vector3f angular_rate_setpoint = attitude_control.update(current_attitude);
     // 输出结果
-    std::cout << "Angular rate setpoint (roll, pitch, yaw): "
-              << angular_rate_setpoint(1) << ", "
-              << angular_rate_setpoint(0) << ", "
-              << angular_rate_setpoint(2) << std::endl;
+    // std::cout << "Angular rate setpoint (roll, pitch, yaw): "
+    //           << angular_rate_setpoint(1) << ", "
+    //           << angular_rate_setpoint(0) << ", "
+    //           << angular_rate_setpoint(2) << std::endl;
 
 
     // std::cout << "w: "

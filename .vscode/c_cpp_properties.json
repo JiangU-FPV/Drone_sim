@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "D:/App/Webots/include/controller/cpp/webots/**",
+                "D:/App/Webots/include/controller/cpp",
+                "D:/App/Webots/msys64/mingw64/include",
+                "D:/App/Webots/include/controller/cpp/webots/vehicle/",
+                "D:/App/Webots/msys64/mingw64/include/c++/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ]
+        }
+    ],
+    "version": 4
+}
