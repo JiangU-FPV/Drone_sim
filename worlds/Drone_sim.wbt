@@ -13,7 +13,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.14164546653282814 0.3044144917213343 0.9419492444079667 0.9176409355582347
-  position -0.7270203170833529 -0.9068026312195757 0.5904341643011205
+  position -1.8810877100981651 -2.2775712920608013 1.1418133323852806
   follow "robot"
   followType "Pan and Tilt Shot"
 }
@@ -25,6 +25,9 @@ Robot {
   translation 0 0 0.20926424999999998
   children [
     Altimeter {
+    }
+    Accelerometer {
+      name "acc"
     }
     GPS {
     }

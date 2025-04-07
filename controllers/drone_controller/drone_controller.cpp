@@ -1,8 +1,12 @@
-// File:          drone_controller.cpp
-// Date:
-// Description:
-// Author:
-// Modifications:
+/**
+ * @file drone_controller.cpp
+ * @author c-Lando.chen (3051619248@qq.com)
+ * @brief 
+ * @version 0.1
+ * @date 2024-11-06
+ * 
+ * 
+ */
 
 // You may need to add webots include files such as
 // <webots/DistanceSensor.hpp>, <webots/Motor.hpp>, etc.
@@ -14,6 +18,7 @@
 #include <webots/Gyro.hpp>
 #include <webots/InertialUnit.hpp>
 #include <webots/GPS.hpp>
+#include <webots/Accelerometer.hpp>
 #include <iostream>
 #include "math_lib.hpp"
 #include "PID.hpp"
@@ -26,7 +31,7 @@
 #define RC_LBTON 1
 #define RC_RBTON 0
 #define RC_SCALE 32.768f
-
+#define HOLD_THR 537.144
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 using namespace matrix;
@@ -79,9 +84,10 @@ int main(int argc, char **argv) {
     std::cerr << "No joystick connected!" << std::endl;
   }
   std::cout << "Joystick model: " << model << std::endl;
-  delay(robot,1000);
+  delay(robot,200);
 
   float rc_info[6];
+
   
   Gyro *gyro        = robot->getGyro("gyro");
   gyro->enable(timeStep);
@@ -92,8 +98,12 @@ int main(int argc, char **argv) {
   GPS *gps  = robot->getGPS("gps");
   gps->enable(timeStep);
 
+  Accelerometer *acc = robot->getAccelerometer("acc");
+  acc->enable(timeStep);
 
-
+  float vel_z = 0;
+  float prev_pos_z = 0;
+  float height_tar = 0;
   /**
    * @brief 启用电机
    * 
@@ -149,6 +159,21 @@ int main(int argc, char **argv) {
   ang_pid[2].setOutputLimit(15.0f);
   ang_pid[2].setIntegralLimit(0.0f);  
 
+  PID acc_z_pid;
+  acc_z_pid.setGains(50.0f,0.1f,0.0f);
+  acc_z_pid.setOutputLimit(10.0f);
+  acc_z_pid.setIntegralLimit(100.0f);
+
+  PID vel_z_pid;
+  vel_z_pid.setGains(3.0f,0.0f,0.0f);
+  vel_z_pid.setOutputLimit(9.8f);
+
+  PID pos_z_pid;
+  pos_z_pid.setGains(1.5f,0.0f,0.0f);
+  pos_z_pid.setOutputLimit(5.0f);
+  pos_z_pid.setIntegralLimit(100.0f);
+
+
   // Main loop:
   // - perform simulation steps until Webots is stopping the controller
   while (robot->step(timeStep) != -1) {
@@ -161,7 +186,16 @@ int main(int argc, char **argv) {
     const double *gyro_info = gyro->getValues();
     const double *rpy_info  = imu->getRollPitchYaw();
     const double *quat_info = imu->getQuaternion();
+    const double *gps_info  = gps->getValues();
+    const double *acc_info  = acc->getValues();
 
+    vel_z = 0.8*(gps_info[2]-prev_pos_z)/dt+0.2*vel_z;
+    prev_pos_z = gps_info[2];
+
+    // std::cout<<vel_z<<", "
+    //           <<gps_info[2]<<std::endl;
+    std::cout<<acc_info[2]<<std::endl;
+    
     // // 初始姿态四元数 (无旋转)
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
 
@@ -183,12 +217,15 @@ int main(int argc, char **argv) {
     //           << current_attitude.x << ",y: "
     //           << current_attitude.y << ",z: "
     //           << current_attitude.z << std::endl;
-
-    for(int i = 0;i<6;i++)
+    if (!model.empty())
     {
-      rc_info[i] = 0.8*rc_info[i]+0.2*(rc.getAxisValue(i)/RC_SCALE);
-      rc_info[i] = dead_zone(rc_info[i],8);
+      for(int i = 0;i<6;i++)
+      {
+        rc_info[i] = 0.8*rc_info[i]+0.2*(rc.getAxisValue(i)/RC_SCALE);
+        rc_info[i] = dead_zone(rc_info[i],8);
+      }
     }
+
 
     // Enter here functions to send actuator commands, like:
     led->set(1);
@@ -225,10 +262,25 @@ int main(int argc, char **argv) {
 
     rate_pid[2].setSetpoint(-angular_rate_setpoint(2));
     float yaw_out = rate_pid[2].update(-gyro_info[2],dt);
-
-    float thrr_out = linear_scale(rc_info[RC_THR],-1000,1000,0,1000);
     
-    //std::cout << yaw_out << std::endl;
+    height_tar+=linear_scale(dead_zone(rc_info[RC_THR],300),-1000,1000,-0.01,0.01);
+    if (height_tar<=0)
+    {
+      height_tar = 0;
+    }
+    
+    pos_z_pid.setSetpoint(height_tar);
+    float pos_z_out = pos_z_pid.update(gps_info[2],dt);
+
+    vel_z_pid.setSetpoint(pos_z_out);
+    float vel_z_out = vel_z_pid.update(vel_z,dt);
+
+    acc_z_pid.setSetpoint(vel_z_out);
+    float acc_z_out = acc_z_pid.update(acc_info[2]-9.8,dt);    
+    //float thrr_out = linear_scale(rc_info[RC_THR],-1000,1000,0,1000);
+    float thrr_out = acc_z_out*100+HOLD_THR;
+   // float thrr_out = 550;
+    std::cout << thrr_out << std::endl;
     motor1->setVelocity(-thrr_out+pitch_out+roll_out+yaw_out);
     motor2->setVelocity(thrr_out+pitch_out-roll_out+yaw_out);
     motor3->setVelocity(-thrr_out-pitch_out-roll_out+yaw_out);
