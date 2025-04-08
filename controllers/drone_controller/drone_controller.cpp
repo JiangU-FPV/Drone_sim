@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
   float vel_z = 0;
   float prev_pos_z = 0;
-  float height_tar = 0;
+  float height_tar = 10;
   /**
    * @brief 启用电机
    * 
@@ -137,13 +137,13 @@ int main(int argc, char **argv) {
 
   PID rate_pid[3];
     // 设置初始配置
-  rate_pid[0].setGains(100.0f, 0.0f, 1.0f);
+  rate_pid[0].setGains(150.0f, 0.0f, 1.0f);
   rate_pid[0].setOutputLimit(100.0f);
   rate_pid[0].setIntegralLimit(10.0f);
-  rate_pid[1].setGains(100.0f, 0.0f, 1.0f);
+  rate_pid[1].setGains(150.0f, 0.0f, 1.0f);
   rate_pid[1].setOutputLimit(100.0f);
   rate_pid[1].setIntegralLimit(10.0f);  
-  rate_pid[2].setGains(100.0f, 0.0f, 1.0f);
+  rate_pid[2].setGains(150.0f, 0.0f, 1.0f);
   rate_pid[2].setOutputLimit(100.0f);
   rate_pid[2].setIntegralLimit(10.0f);  
 
@@ -165,11 +165,11 @@ int main(int argc, char **argv) {
   acc_z_pid.setIntegralLimit(100.0f);
 
   PID vel_z_pid;
-  vel_z_pid.setGains(3.0f,0.0f,0.0f);
+  vel_z_pid.setGains(10.0f,0.1f,0.2f);
   vel_z_pid.setOutputLimit(9.8f);
 
   PID pos_z_pid;
-  pos_z_pid.setGains(1.5f,0.0f,0.0f);
+  pos_z_pid.setGains(3.0f,0.0f,0.0f);
   pos_z_pid.setOutputLimit(5.0f);
   pos_z_pid.setIntegralLimit(100.0f);
 
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
 
     // std::cout<<vel_z<<", "
     //           <<gps_info[2]<<std::endl;
-    std::cout<<acc_info[2]<<std::endl;
+    //std::cout<<acc_info[2]<<std::endl;
     
     // // 初始姿态四元数 (无旋转)
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
     rate_pid[2].setSetpoint(-angular_rate_setpoint(2));
     float yaw_out = rate_pid[2].update(-gyro_info[2],dt);
     
-    height_tar+=linear_scale(dead_zone(rc_info[RC_THR],300),-1000,1000,-0.01,0.01);
+    height_tar+=linear_scale(dead_zone(rc_info[RC_THR],400),-1000,1000,-0.015,0.015);
     if (height_tar<=0)
     {
       height_tar = 0;
@@ -278,9 +278,9 @@ int main(int argc, char **argv) {
     acc_z_pid.setSetpoint(vel_z_out);
     float acc_z_out = acc_z_pid.update(acc_info[2]-9.8,dt);    
     //float thrr_out = linear_scale(rc_info[RC_THR],-1000,1000,0,1000);
-    float thrr_out = acc_z_out*100+HOLD_THR;
+    float thrr_out = vel_z_out*50+HOLD_THR + pos_z_out*5;
    // float thrr_out = 550;
-    std::cout << thrr_out << std::endl;
+    std::cout << height_tar << std::endl;
     motor1->setVelocity(-thrr_out+pitch_out+roll_out+yaw_out);
     motor2->setVelocity(thrr_out+pitch_out-roll_out+yaw_out);
     motor3->setVelocity(-thrr_out-pitch_out-roll_out+yaw_out);
