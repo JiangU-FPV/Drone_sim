@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
   float vel_z = 0;
   float prev_pos_z = 0;
-  float height_tar = 10;
+  float height_tar = 5;
   /**
    * @brief 启用电机
    * 
@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
   rate_pid[1].setGains(150.0f, 0.0f, 1.0f);
   rate_pid[1].setOutputLimit(100.0f);
   rate_pid[1].setIntegralLimit(10.0f);  
-  rate_pid[2].setGains(150.0f, 0.0f, 1.0f);
+  rate_pid[2].setGains(150.0f, 0.0f, 5.0f);
   rate_pid[2].setOutputLimit(100.0f);
   rate_pid[2].setIntegralLimit(10.0f);  
 
@@ -166,6 +166,7 @@ int main(int argc, char **argv) {
 
   PID vel_z_pid;
   vel_z_pid.setGains(10.0f,0.1f,0.2f);
+  acc_z_pid.setIntegralLimit(100.0f);
   vel_z_pid.setOutputLimit(9.8f);
 
   PID pos_z_pid;
@@ -173,6 +174,7 @@ int main(int argc, char **argv) {
   pos_z_pid.setOutputLimit(5.0f);
   pos_z_pid.setIntegralLimit(100.0f);
 
+  float yaw_tar = 0.0f;
 
   // Main loop:
   // - perform simulation steps until Webots is stopping the controller
@@ -199,9 +201,25 @@ int main(int argc, char **argv) {
     // // 初始姿态四元数 (无旋转)
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
 
-    // // 目标姿态四元数
-    Quatf target_attitude(1.0f, 0.0f, 0.0f, 0.0f);
+    yaw_tar -= rc_info[RC_YAW]/1000.0f/50.0f;
+    if (yaw_tar>M_PI)
+    {
+      yaw_tar-=2*M_PI;
+    }
+    else if (yaw_tar<-M_PI)
+    {
+      yaw_tar+=2*M_PI;
+    }
+    yaw_tar = m_constrain(yaw_tar,-M_PI,M_PI);
 
+    std::cout<<yaw_tar<<std::endl;
+    // // 目标姿态四元数
+    float stick_attitude[4];
+    euler_to_quaternion(rc_info[RC_PIT]/2000.0f,rc_info[RC_ROL]/2000.0f,yaw_tar,stick_attitude);
+    //stick_to_quaternion(rc_info[RC_PIT]/1000.0f,rc_info[RC_ROL]/1000.0f,yaw_tar,M_PI/4,stick_attitude);
+    Quatf target_attitude(stick_attitude[0],stick_attitude[1],stick_attitude[2],stick_attitude[3]);
+
+    
     attitude_control.setAttitudeSetpoint(target_attitude,0);
     // // 更新控制输出（计算角速度设定值）
     Vector3f angular_rate_setpoint = attitude_control.update(current_attitude);
@@ -279,8 +297,15 @@ int main(int argc, char **argv) {
     float acc_z_out = acc_z_pid.update(acc_info[2]-9.8,dt);    
     //float thrr_out = linear_scale(rc_info[RC_THR],-1000,1000,0,1000);
     float thrr_out = vel_z_out*50+HOLD_THR + pos_z_out*5;
+    if (thrr_out<=300)
+    {
+     thrr_out=300;
+    }
+    
    // float thrr_out = 550;
-    std::cout << height_tar << std::endl;
+    //std::cout << height_tar << std::endl;
+    
+    std::cout << "joystick " << rc_info[RC_THR] << ", " << rc_info[RC_PIT] << ", " << rc_info[RC_ROL] <<", " << rc_info[RC_YAW] <<std::endl;
     motor1->setVelocity(-thrr_out+pitch_out+roll_out+yaw_out);
     motor2->setVelocity(thrr_out+pitch_out-roll_out+yaw_out);
     motor3->setVelocity(-thrr_out-pitch_out-roll_out+yaw_out);
