@@ -101,9 +101,11 @@ int main(int argc, char **argv) {
   Accelerometer *acc = robot->getAccelerometer("acc");
   acc->enable(timeStep);
 
-  float vel_z = 0;
-  float prev_pos_z = 0;
-  float height_tar = 5;
+
+  
+
+
+
   /**
    * @brief 启用电机
    * 
@@ -174,8 +176,49 @@ int main(int argc, char **argv) {
   pos_z_pid.setOutputLimit(5.0f);
   pos_z_pid.setIntegralLimit(100.0f);
 
-  float yaw_tar = 0.0f;
+  PID pos_xy_pid[2];
+  pos_xy_pid[0].setGains(1.0f,0.0f,0.0f);
+  pos_xy_pid[0].setOutputLimit(10.0f);
+  pos_xy_pid[1].setGains(1.0f,0.0f,0.0f);
+  pos_xy_pid[1].setOutputLimit(10.0f);
 
+  PID vel_xy_pid[2];
+  vel_xy_pid[0].setGains(0.3f,0.0f,0.03f);
+  vel_xy_pid[0].setOutputLimit(0.5f);
+  vel_xy_pid[1].setGains(0.3f,0.0f,0.03f);
+  vel_xy_pid[1].setOutputLimit(0.5f);
+
+
+  float pos_x = 0;
+  float pos_y = 0;
+  float pos_z = 0;
+
+  float prev_pos_z = 0;
+  float prev_pos_x = 0;
+  float prev_pos_y = 0;
+
+
+  float vel_z = 0;
+  float vel_x = 0;
+  float vel_y = 0;
+
+
+  float pos_x_tar = 0.0f;
+  float pos_y_tar = 0.0f;
+
+  float vel_x_tar = 0.0f;
+  float vel_y_tar = 0.0f;
+
+  float acc_x_tar = 0.0f;
+  float acc_y_tar = 0.0f;
+
+
+  float yaw_tar = 0.0f;
+  float height_tar = 3;
+
+
+  int step = 0;
+  double step_time = 0;
   // Main loop:
   // - perform simulation steps until Webots is stopping the controller
   while (robot->step(timeStep) != -1) {
@@ -191,17 +234,96 @@ int main(int argc, char **argv) {
     const double *gps_info  = gps->getValues();
     const double *acc_info  = acc->getValues();
 
+    pos_x = gps_info[0];
+    pos_y = gps_info[1];
+    pos_z = gps_info[2];
+
+    std::cout<<"pos_x"<<pos_x<<std::endl;
+    std::cout<<"pos_y"<<pos_y<<std::endl;
+
+    vel_x = 0.8*(gps_info[0]-prev_pos_x)/dt+0.2*vel_x;
+    vel_y = 0.8*(gps_info[1]-prev_pos_y)/dt+0.2*vel_y;
     vel_z = 0.8*(gps_info[2]-prev_pos_z)/dt+0.2*vel_z;
+
+    prev_pos_x = gps_info[0];
+    prev_pos_y = gps_info[1];
     prev_pos_z = gps_info[2];
+    
+
+    if (step == 0)
+    {
+      height_tar = 3;
+      pos_x_tar  = 0;
+      pos_y_tar  = 0;
+      if ((robot->getTime()-step_time)>5.0)
+      {
+        
+        step_time = robot->getTime();
+        step = 1;
+      }
+      
+    }
+    else if (step ==1)
+    {
+      height_tar = 3;
+      pos_x_tar  = 5;
+      pos_y_tar  = 0;
+      if ((robot->getTime()-step_time)>5.0)
+      {
+        
+        step_time = robot->getTime();
+        step = 2;
+      }     
+    }
+    else if (step ==2)
+    {
+      height_tar = 3;
+      pos_x_tar  = 5;
+      pos_y_tar  = 5;
+      if ((robot->getTime()-step_time)>5.0)
+      {
+        
+        step_time = robot->getTime();
+        step = 3;
+      }
+    }    
+    else if (step ==3)
+    {
+      height_tar = 3;
+      pos_x_tar  = 0;
+      pos_y_tar  = 5;
+      if ((robot->getTime()-step_time)>5.0)
+      {
+        
+        step_time = robot->getTime();
+        step = 0;
+      }
+    }    
+
+
+
+
+    // if (m_abs(pos_x - 0.0)<0.1f&&
+    //     m_abs(pos_y - 0.0)<0.1f&&
+    //     m_abs(pos_z - 0.0)<0.1f&&
+    //    )
+    // {
+    //   /* code */
+    // }
+    // else
+    // {
+    //   /* code */
+    // }
+    
 
     // std::cout<<vel_z<<", "
-    //           <<gps_info[2]<<std::endl;
+    // <<gps_info[2]<<std::endl;
     //std::cout<<acc_info[2]<<std::endl;
     
     // // 初始姿态四元数 (无旋转)
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
-
-    yaw_tar -= rc_info[RC_YAW]/1000.0f/50.0f;
+    yaw_tar = 0;
+    //yaw_tar -= rc_info[RC_YAW]/1000.0f/50.0f;
     if (yaw_tar>M_PI)
     {
       yaw_tar-=2*M_PI;
@@ -212,11 +334,30 @@ int main(int argc, char **argv) {
     }
     yaw_tar = m_constrain(yaw_tar,-M_PI,M_PI);
 
-    std::cout<<yaw_tar<<std::endl;
+    //位置控制器
+    pos_xy_pid[0].setSetpoint(pos_x_tar);
+    vel_x_tar =  pos_xy_pid[0].update(pos_x,dt);
+    
+    pos_xy_pid[1].setSetpoint(pos_y_tar);
+    vel_y_tar =  pos_xy_pid[1].update(pos_y,dt);
+    
+    std::cout<<vel_x_tar<<std::endl;
+    std::cout<<vel_y_tar<<std::endl;
+
+    //速度控制器
+    vel_xy_pid[0].setSetpoint(vel_x_tar);
+    acc_x_tar =  vel_xy_pid[0].update(vel_x,dt);
+    
+    vel_xy_pid[1].setSetpoint(vel_y_tar);
+    acc_y_tar =  vel_xy_pid[1].update(vel_y,dt); 
+
+
+    //std::cout<<yaw_tar<<std::endl;
     // // 目标姿态四元数
+
     float stick_attitude[4];
-    euler_to_quaternion(rc_info[RC_PIT]/2000.0f,rc_info[RC_ROL]/2000.0f,yaw_tar,stick_attitude);
-    //stick_to_quaternion(rc_info[RC_PIT]/1000.0f,rc_info[RC_ROL]/1000.0f,yaw_tar,M_PI/4,stick_attitude);
+    // euler_to_quaternion(rc_info[RC_PIT]/2000.0f,rc_info[RC_ROL]/2000.0f,yaw_tar,stick_attitude);
+    euler_to_quaternion(acc_y_tar,acc_x_tar,yaw_tar,stick_attitude);
     Quatf target_attitude(stick_attitude[0],stick_attitude[1],stick_attitude[2],stick_attitude[3]);
 
     

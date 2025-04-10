@@ -12,8 +12,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.1781575424552449 0.5458064311177279 0.818752239579738 0.7587178196863567
-  position -2.2714822400666046 -1.3690450917241774 1.5129303794107496
+  orientation -0.1613103332269663 0.2880408033872449 0.9439340400569499 1.070941123193119
+  position -1.0386717023107044 -1.781213954463961 1.0369143790546798
   follow "robot"
   followType "Pan and Tilt Shot"
 }
@@ -22,7 +22,7 @@ TexturedBackground {
 TexturedBackgroundLight {
 }
 Robot {
-  translation 0 0 0.20926424999999998
+  translation 0 0 0.219264
   children [
     Altimeter {
     }
@@ -300,7 +300,6 @@ Robot {
     mass 3
   }
   controller "drone_controller"
-  linearVelocity 0 0 -0.0981
 }
 Solid {
   children [
