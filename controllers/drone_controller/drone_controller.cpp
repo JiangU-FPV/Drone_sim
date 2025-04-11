@@ -101,11 +101,6 @@ int main(int argc, char **argv) {
   Accelerometer *acc = robot->getAccelerometer("acc");
   acc->enable(timeStep);
 
-
-  
-
-
-
   /**
    * @brief 启用电机
    * 
@@ -127,14 +122,14 @@ int main(int argc, char **argv) {
   
 
     // // 创建姿态控制对象
-    AttitudeControl attitude_control;
+  AttitudeControl attitude_control;
 
     // 设置比例增益和偏航权重
-    Vector3f proportional_gain = {10.0f, 10.0f, 7.0f};  // 假设是 (roll, pitch, yaw)
-    float yaw_weight = 0.5f;  // 偏航权重
-    attitude_control.setProportionalGain(proportional_gain, yaw_weight);
-    Vector3f rate_limit = {5.0f, 5.0f, 5.0f}; // 设定最大角速度限制（滚转、俯仰、偏航）
-    attitude_control.setRateLimit(rate_limit);
+  Vector3f proportional_gain = {10.0f, 10.0f, 7.0f};  // 假设是 (roll, pitch, yaw)
+  float yaw_weight = 0.5f;  // 偏航权重
+  attitude_control.setProportionalGain(proportional_gain, yaw_weight);
+  Vector3f rate_limit = {5.0f, 5.0f, 5.0f}; // 设定最大角速度限制（滚转、俯仰、偏航）
+  attitude_control.setRateLimit(rate_limit);
 
 
   PID rate_pid[3];
@@ -145,7 +140,7 @@ int main(int argc, char **argv) {
   rate_pid[1].setGains(150.0f, 0.0f, 1.0f);
   rate_pid[1].setOutputLimit(100.0f);
   rate_pid[1].setIntegralLimit(10.0f);  
-  rate_pid[2].setGains(150.0f, 0.0f, 5.0f);
+  rate_pid[2].setGains(500.0f, 0.0f, 5.0f);
   rate_pid[2].setOutputLimit(100.0f);
   rate_pid[2].setIntegralLimit(10.0f);  
 
@@ -173,7 +168,7 @@ int main(int argc, char **argv) {
 
   PID pos_z_pid;
   pos_z_pid.setGains(3.0f,0.0f,0.0f);
-  pos_z_pid.setOutputLimit(5.0f);
+  pos_z_pid.setOutputLimit(3.0f);
   pos_z_pid.setIntegralLimit(100.0f);
 
   PID pos_xy_pid[2];
@@ -216,8 +211,11 @@ int main(int argc, char **argv) {
   float yaw_tar = 0.0f;
   float height_tar = 3;
 
+  float rpy_ptich;
+  float rpy_roll; 
+  float rpy_yaw;
 
-  int step = 0;
+  int step = -1;
   double step_time = 0;
   // Main loop:
   // - perform simulation steps until Webots is stopping the controller
@@ -227,19 +225,23 @@ int main(int argc, char **argv) {
     //  double val = ds->getValue();
     // Process sensor data here.
     const double dt = robot->getTime() - past_time;
-
     const double *gyro_info = gyro->getValues();
     const double *rpy_info  = imu->getRollPitchYaw();
     const double *quat_info = imu->getQuaternion();
     const double *gps_info  = gps->getValues();
     const double *acc_info  = acc->getValues();
 
+    rpy_ptich = rpy_info[0];
+    rpy_roll  = rpy_info[1];
+    rpy_yaw   = rpy_info[2];
+    std::cout<<rpy_ptich<<", "<<rpy_roll<<", "<<rpy_yaw<<std::endl;
+
     pos_x = gps_info[0];
     pos_y = gps_info[1];
     pos_z = gps_info[2];
 
-    std::cout<<"pos_x"<<pos_x<<std::endl;
-    std::cout<<"pos_y"<<pos_y<<std::endl;
+    std::cout<<"pos_x_tar"<<pos_x_tar<<std::endl;
+    std::cout<<"pos_y_tar"<<pos_y_tar<<std::endl;
 
     vel_x = 0.8*(gps_info[0]-prev_pos_x)/dt+0.2*vel_x;
     vel_y = 0.8*(gps_info[1]-prev_pos_y)/dt+0.2*vel_y;
@@ -248,18 +250,40 @@ int main(int argc, char **argv) {
     prev_pos_x = gps_info[0];
     prev_pos_y = gps_info[1];
     prev_pos_z = gps_info[2];
+    // yaw_tar+=0.005f;
+
+    if (m_abs(pos_y_tar-pos_y)>0.1f||
+        m_abs(pos_x_tar-pos_x)>0.1f)
+    {
+      yaw_tar = atan2f(pos_y_tar-pos_y,pos_x_tar-pos_x) - M_PI/2;
+    }
+        
+    if (step ==-1)
+    {
+      height_tar = 3;
+      pos_x_tar  = 0;
+      pos_y_tar  = 0;
+      if ((robot->getTime()-step_time)>2)
+      {
+        step_time = robot->getTime();
+        step = 0;
+      }
+    }
     
+
 
     if (step == 0)
     {
       height_tar = 3;
       pos_x_tar  = 0;
       pos_y_tar  = 0;
-      if ((robot->getTime()-step_time)>5.0)
+      //yaw_tar = -M_PI/2;
+      if ((robot->getTime()-step_time)>3)
       {
         
         step_time = robot->getTime();
         step = 1;
+        //yaw_tar-= M_PI/2;
       }
       
     }
@@ -268,21 +292,24 @@ int main(int argc, char **argv) {
       height_tar = 3;
       pos_x_tar  = 5;
       pos_y_tar  = 0;
-      if ((robot->getTime()-step_time)>5.0)
+      // yaw_tar =-M_PI/2;
+      if ((robot->getTime()-step_time)>3)
       {
         
         step_time = robot->getTime();
+        //yaw_tar-= M_PI/2;
         step = 2;
       }     
     }
     else if (step ==2)
     {
       height_tar = 3;
-      pos_x_tar  = 5;
+      pos_x_tar  = 7;
       pos_y_tar  = 5;
-      if ((robot->getTime()-step_time)>5.0)
+      // yaw_tar = M_PI/2;
+      if ((robot->getTime()-step_time)>3)
       {
-        
+        //yaw_tar-= M_PI/2;
         step_time = robot->getTime();
         step = 3;
       }
@@ -292,17 +319,14 @@ int main(int argc, char **argv) {
       height_tar = 3;
       pos_x_tar  = 0;
       pos_y_tar  = 5;
-      if ((robot->getTime()-step_time)>5.0)
+      // yaw_tar = -M_PI;
+      if ((robot->getTime()-step_time)>3)
       {
-        
+        //yaw_tar-= M_PI/2;
         step_time = robot->getTime();
         step = 0;
       }
     }    
-
-
-
-
     // if (m_abs(pos_x - 0.0)<0.1f&&
     //     m_abs(pos_y - 0.0)<0.1f&&
     //     m_abs(pos_z - 0.0)<0.1f&&
@@ -315,15 +339,8 @@ int main(int argc, char **argv) {
     //   /* code */
     // }
     
-
-    // std::cout<<vel_z<<", "
-    // <<gps_info[2]<<std::endl;
-    //std::cout<<acc_info[2]<<std::endl;
-    
-    // // 初始姿态四元数 (无旋转)
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
-    yaw_tar = 0;
-    //yaw_tar -= rc_info[RC_YAW]/1000.0f/50.0f;
+    
     if (yaw_tar>M_PI)
     {
       yaw_tar-=2*M_PI;
@@ -340,42 +357,28 @@ int main(int argc, char **argv) {
     
     pos_xy_pid[1].setSetpoint(pos_y_tar);
     vel_y_tar =  pos_xy_pid[1].update(pos_y,dt);
-    
-    std::cout<<vel_x_tar<<std::endl;
-    std::cout<<vel_y_tar<<std::endl;
 
     //速度控制器
     vel_xy_pid[0].setSetpoint(vel_x_tar);
-    acc_x_tar =  vel_xy_pid[0].update(vel_x,dt);
-    
+    float acc_x_tar_world = vel_xy_pid[0].update(vel_x,dt);
+
     vel_xy_pid[1].setSetpoint(vel_y_tar);
-    acc_y_tar =  vel_xy_pid[1].update(vel_y,dt); 
+    float acc_y_tar_world =  vel_xy_pid[1].update(vel_y,dt); 
 
-
-    //std::cout<<yaw_tar<<std::endl;
-    // // 目标姿态四元数
+    acc_x_tar =  acc_x_tar_world*cos(rpy_yaw) + acc_y_tar_world*sin(rpy_yaw);
+    acc_y_tar =  -acc_x_tar_world*sin(rpy_yaw) + acc_y_tar_world*cos(rpy_yaw);
+    std::cout<<"x_angle"<<acc_x_tar<<std::endl;
+    std::cout<<"y_angle"<<acc_y_tar<<std::endl;
 
     float stick_attitude[4];
     // euler_to_quaternion(rc_info[RC_PIT]/2000.0f,rc_info[RC_ROL]/2000.0f,yaw_tar,stick_attitude);
     euler_to_quaternion(acc_y_tar,acc_x_tar,yaw_tar,stick_attitude);
     Quatf target_attitude(stick_attitude[0],stick_attitude[1],stick_attitude[2],stick_attitude[3]);
 
-    
     attitude_control.setAttitudeSetpoint(target_attitude,0);
     // // 更新控制输出（计算角速度设定值）
     Vector3f angular_rate_setpoint = attitude_control.update(current_attitude);
-    // 输出结果
-    // std::cout << "Angular rate setpoint (roll, pitch, yaw): "
-    //           << angular_rate_setpoint(1) << ", "
-    //           << angular_rate_setpoint(0) << ", "
-    //           << angular_rate_setpoint(2) << std::endl;
 
-
-    // std::cout << "w: "
-    //           << current_attitude.w << ",x: "
-    //           << current_attitude.x << ",y: "
-    //           << current_attitude.y << ",z: "
-    //           << current_attitude.z << std::endl;
     if (!model.empty())
     {
       for(int i = 0;i<6;i++)
@@ -384,34 +387,8 @@ int main(int argc, char **argv) {
         rc_info[i] = dead_zone(rc_info[i],8);
       }
     }
-
-
     // Enter here functions to send actuator commands, like:
     led->set(1);
-    /*欧拉角数控制*/
-    // ang_pid[0].setSetpoint(linear_scale(rc_info[RC_PIT],-1000,1000,-1,1));
-    // rate_pid[0].setSetpoint(ang_pid[0].update(-rpy_info[0],dt));
-    // float pitch_out = rate_pid[0].update(-gyro_info[0],dt);
-
-    // ang_pid[1].setSetpoint(linear_scale(-rc_info[RC_ROL],-1000,1000,-1,1));
-    // rate_pid[1].setSetpoint(ang_pid[1].update(-rpy_info[1],dt));
-    // float roll_out = rate_pid[1].update(-gyro_info[1],dt);
-
-    // //ang_pid[2].setSetpoint(linear_scale(-rc_info[RC_YAW],-1000,1000,-1,1));
-    // rate_pid[2].setSetpoint(linear_scale(rc_info[RC_YAW],-1000,1000,-5,5));
-    // float yaw_out = rate_pid[2].update(-gyro_info[2],dt);
-
-    /*四元数控制*/
-    // rate_pid[0].setSetpoint(angular_rate_setpoint[1]);
-    // float pitch_out = rate_pid[0].update(-gyro_info[0],dt);
-    
-    
-    // rate_pid[1].setSetpoint(-angular_rate_setpoint[0]);
-    // float roll_out = rate_pid[1].update(-gyro_info[1],dt);
-
-    // rate_pid[2].setSetpoint(-angular_rate_setpoint[2]);
-    // float yaw_out = rate_pid[2].update(-gyro_info[2],dt);
-
 
     rate_pid[0].setSetpoint(-angular_rate_setpoint(0));
     float pitch_out = rate_pid[0].update(-gyro_info[0],dt);
@@ -423,10 +400,6 @@ int main(int argc, char **argv) {
     float yaw_out = rate_pid[2].update(-gyro_info[2],dt);
     
     height_tar+=linear_scale(dead_zone(rc_info[RC_THR],400),-1000,1000,-0.015,0.015);
-    if (height_tar<=0)
-    {
-      height_tar = 0;
-    }
     
     pos_z_pid.setSetpoint(height_tar);
     float pos_z_out = pos_z_pid.update(gps_info[2],dt);
@@ -446,7 +419,7 @@ int main(int argc, char **argv) {
    // float thrr_out = 550;
     //std::cout << height_tar << std::endl;
     
-    std::cout << "joystick " << rc_info[RC_THR] << ", " << rc_info[RC_PIT] << ", " << rc_info[RC_ROL] <<", " << rc_info[RC_YAW] <<std::endl;
+    //std::cout << "joystick " << rc_info[RC_THR] << ", " << rc_info[RC_PIT] << ", " << rc_info[RC_ROL] <<", " << rc_info[RC_YAW] <<std::endl;
     motor1->setVelocity(-thrr_out+pitch_out+roll_out+yaw_out);
     motor2->setVelocity(thrr_out+pitch_out-roll_out+yaw_out);
     motor3->setVelocity(-thrr_out-pitch_out-roll_out+yaw_out);
