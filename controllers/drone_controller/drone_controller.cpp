@@ -23,6 +23,9 @@
 #include "math_lib.hpp"
 #include "PID.hpp"
 #include <AttitudeControl.hpp>
+#include "tool/json.hpp"
+#include <fstream>
+#include <vector>
 // #include "attitude_control.hpp"
 #define RC_THR 3
 #define RC_YAW 2
@@ -35,6 +38,7 @@
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
 using namespace matrix;
+using json = nlohmann::json;
 // 将 rad/s 转换为 RPM
 double radPerSecToRpm(double radPerSec) {
   return radPerSec * 60.0 / (2.0 * M_PI);
@@ -49,7 +53,10 @@ void delay(Robot *robot, int milliseconds) {
         }
     }
 }
-
+// 定义路径点结构体
+struct Point3D {
+  double x, y, z;
+};
 // This is the main program of your controller.
 // It creates an instance of your Robot instance, launches its
 // function(s) and destroys it at the end of the execution.
@@ -58,6 +65,33 @@ void delay(Robot *robot, int milliseconds) {
 // The arguments of the main function can be specified by the
 // "controllerArgs" field of the Robot node
 int main(int argc, char **argv) {
+
+  std::ifstream file("../../map/smoothed_path.json");
+  if (!file.is_open()) {
+      std::cerr << "无法打开文件！" << std::endl;
+      return 1;
+  }
+
+  // 解析 JSON
+  json j;
+  file >> j;
+
+  // 提取 resolution（如果需要）
+  double resolution = j["resolution"];
+
+  // 提取路径点
+  std::vector<Point3D> path;
+  for (const auto& p : j["path"]) {
+      if (p.size() == 3) {
+          path.push_back({p[0], p[1], p[2]});
+      }
+  }
+
+  std::cout << "读取路径点数: " << path.size() << std::endl;
+  for (const auto& pt : path) {
+      std::cout << "(" << pt.x << ", " << pt.y << ", " << pt.z << ")\n";
+  }
+
   // create the Robot instance.
   Robot *robot = new Robot();
   
@@ -215,6 +249,9 @@ int main(int argc, char **argv) {
   float rpy_roll; 
   float rpy_yaw;
 
+  float start_point[3] = {1.0, 1.0, 2.0};
+  float end_point[3]   = {19.0, 19.0, 3.0};
+
   int step = -1;
   double step_time = 0;
   // Main loop:
@@ -251,93 +288,97 @@ int main(int argc, char **argv) {
     prev_pos_y = gps_info[1];
     prev_pos_z = gps_info[2];
     // yaw_tar+=0.005f;
+    
+    float yaw_init_tar = atan2f(path[1].y-path[0].y,path[1].x-path[1].x) - M_PI/2;
 
-    if (m_abs(pos_y_tar-pos_y)>0.1f||
-        m_abs(pos_x_tar-pos_x)>0.1f)
+    if (m_abs(pos_y_tar-pos_y)>0.2f||
+        m_abs(pos_x_tar-pos_x)>0.2f)
     {
       yaw_tar = atan2f(pos_y_tar-pos_y,pos_x_tar-pos_x) - M_PI/2;
-    }
-        
+    } 
+
     if (step ==-1)
     {
-      height_tar = 3;
-      pos_x_tar  = 0;
-      pos_y_tar  = 0;
-      if ((robot->getTime()-step_time)>2)
+      pos_x_tar  = path[0].x;
+      pos_y_tar  = path[0].y;
+      height_tar = path[0].z;
+      yaw_tar = yaw_init_tar;
+      if ((robot->getTime()-step_time)>5)
       {
         step_time = robot->getTime();
         step = 0;
       }
     }
     
-
-
-    if (step == 0)
+    if (step != -1)
     {
-      height_tar = 3;
-      pos_x_tar  = 0;
-      pos_y_tar  = 0;
-      //yaw_tar = -M_PI/2;
-      if ((robot->getTime()-step_time)>3)
+      pos_x_tar  = path[step].x;
+      pos_y_tar  = path[step].y;
+      height_tar = path[step].z;
+      if ((robot->getTime()-step_time)>0.06)
       {
-        
         step_time = robot->getTime();
-        step = 1;
-        //yaw_tar-= M_PI/2;
+        step +=1;
+      }
+
+      if (step>=(path.size()-1))
+      {
+        step=path.size()-1;
       }
       
-    }
-    else if (step ==1)
-    {
-      height_tar = 3;
-      pos_x_tar  = 5;
-      pos_y_tar  = 0;
-      // yaw_tar =-M_PI/2;
-      if ((robot->getTime()-step_time)>3)
-      {
+    //   height_tar = 3;
+    //   pos_x_tar  = 0;
+    //   pos_y_tar  = 0;
+    //   //yaw_tar = -M_PI/2;
+    //   if ((robot->getTime()-step_time)>3)
+    //   {
         
-        step_time = robot->getTime();
-        //yaw_tar-= M_PI/2;
-        step = 2;
-      }     
-    }
-    else if (step ==2)
-    {
-      height_tar = 3;
-      pos_x_tar  = 7;
-      pos_y_tar  = 5;
-      // yaw_tar = M_PI/2;
-      if ((robot->getTime()-step_time)>3)
-      {
-        //yaw_tar-= M_PI/2;
-        step_time = robot->getTime();
-        step = 3;
-      }
-    }    
-    else if (step ==3)
-    {
-      height_tar = 3;
-      pos_x_tar  = 0;
-      pos_y_tar  = 5;
-      // yaw_tar = -M_PI;
-      if ((robot->getTime()-step_time)>3)
-      {
-        //yaw_tar-= M_PI/2;
-        step_time = robot->getTime();
-        step = 0;
-      }
-    }    
-    // if (m_abs(pos_x - 0.0)<0.1f&&
-    //     m_abs(pos_y - 0.0)<0.1f&&
-    //     m_abs(pos_z - 0.0)<0.1f&&
-    //    )
-    // {
-    //   /* code */
+    //     step_time = robot->getTime();
+    //     step = 1;
+    //     //yaw_tar-= M_PI/2;
+    //   }
+      
     // }
-    // else
+    // else if (step ==1)
     // {
-    //   /* code */
+    //   height_tar = 3;
+    //   pos_x_tar  = 15;
+    //   pos_y_tar  = 2.5;
+    //   // yaw_tar =-M_PI/2;
+    //   if ((robot->getTime()-step_time)>6)
+    //   {
+        
+    //     step_time = robot->getTime();
+    //     //yaw_tar-= M_PI/2;
+    //     step = 2;
+    //   }     
     // }
+    // else if (step ==2)
+    // {
+    //   height_tar = 3;
+    //   pos_x_tar  = 5;
+    //   pos_y_tar  = 7.5;
+    //   // yaw_tar = M_PI/2;
+    //   if ((robot->getTime()-step_time)>3)
+    //   {
+    //     //yaw_tar-= M_PI/2;
+    //     step_time = robot->getTime();
+    //     step = 3;
+    //   }
+    // }    
+    // else if (step ==3)
+    // {
+    //   height_tar = 3;
+    //   pos_x_tar  = 5;
+    //   pos_y_tar  = 10;
+    //   // yaw_tar = -M_PI;
+    //   if ((robot->getTime()-step_time)>3)
+    //   {
+    //     //yaw_tar-= M_PI/2;
+    //     step_time = robot->getTime();
+    //     step = 0;
+    //   }
+    }    
     
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
     
