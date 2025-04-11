@@ -19,6 +19,7 @@
 #include <webots/InertialUnit.hpp>
 #include <webots/GPS.hpp>
 #include <webots/Accelerometer.hpp>
+#include <webots/Camera.hpp>
 #include <iostream>
 #include "math_lib.hpp"
 #include "PID.hpp"
@@ -135,6 +136,9 @@ int main(int argc, char **argv) {
   Accelerometer *acc = robot->getAccelerometer("acc");
   acc->enable(timeStep);
 
+  Camera *camera = robot->getCamera("camera");
+  camera->enable(4 * timeStep);
+
   /**
    * @brief 启用电机
    * 
@@ -142,7 +146,8 @@ int main(int argc, char **argv) {
   Motor *motor1 = robot->getMotor("motor1");
   Motor *motor2 = robot->getMotor("motor2");
   Motor *motor3 = robot->getMotor("motor3");
-  Motor *motor4 = robot->getMotor("motor4");  
+  Motor *motor4 = robot->getMotor("motor4"); 
+
   //  DistanceSensor *ds = robot->getDistanceSensor("dsname");
   //  ds->enable(timeStep);
   motor1->setPosition(INFINITY);  // 设置为无限位置模式以使用速度控制

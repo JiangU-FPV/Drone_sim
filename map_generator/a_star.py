@@ -217,7 +217,7 @@ size = voxel_data["size"]
 voxel_array = np.array(voxel_data["data"])
 
 # === Step 1: 膨胀障碍物 ===
-inflate_distance = 1.0  # 单位：米
+inflate_distance = 0.75  # 单位：米
 inflate_radius = int(np.ceil(inflate_distance / map_resolution))  # 转为体素单位
 structure = np.ones((2 * inflate_radius + 1,) * 3)  # 立方体结构
 obstacle_mask = voxel_array == 1
@@ -230,7 +230,7 @@ goal_world = (29.0, 29.0, 3.0)
 start = tuple(int(coord / map_resolution) for coord in start_world)
 goal = tuple(int(coord / map_resolution) for coord in goal_world)
 
-z_weight = 20.0  # 垂直惩罚因子
+z_weight = 25  # 垂直惩罚因子
 
 # 6方向邻居（在3D空间里）
 # neighbors = [(0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)]

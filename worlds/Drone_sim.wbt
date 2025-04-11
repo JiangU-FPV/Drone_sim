@@ -14,18 +14,24 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.1573348296349698 0.40578589450031655 0.9003241411893348 0.8133006601975307
-  position -1.1744330930139402 -0.990155977206056 1.4047254269774658
+  orientation -0.27585004107599864 0.5365434756313899 0.7975135444591257 1.1452228262831285
+  position -1.4634082598073868 -2.2824822756719634 3.6883653391767095
   follow "robot"
-  followType "Pan and Tilt Shot"
 }
 TexturedBackground {
 }
 TexturedBackgroundLight {
 }
 Robot {
-  translation 1 1 0.219264
+  translation 1.25 1.25 0.219264
   children [
+    Camera {
+      translation 0 0.14 0.03
+      rotation 0 0 1 1.5708
+      fieldOfView 2
+      width 128
+      antiAliasing TRUE
+    }
     Altimeter {
     }
     Accelerometer {
@@ -313,6 +319,11 @@ Wall {
   size 10 1 3
 }
 Wall {
+  translation 15 10 0
+  name "wall(7)"
+  size 10 1 3
+}
+Wall {
   translation 20 5 0
   name "wall(5)"
   size 1 10 3
@@ -323,9 +334,19 @@ Wall {
   size 1 6 3
 }
 Wall {
-  translation 15 15 0
+  translation 14 16 1
   name "wall(3)"
-  size 2 2 3
+  size 1 1 3
+}
+Wall {
+  translation 14 16 1
+  name "wall(8)"
+  size 1 1 3
+}
+Wall {
+  translation 18 16 1
+  name "wall(9)"
+  size 1 1 3
 }
 Wall {
   translation 20 20 0
@@ -340,4 +361,5 @@ Wall {
 Floor {
   translation 15 15 0
   size 30 30
+  tileSize 100 100
 }
