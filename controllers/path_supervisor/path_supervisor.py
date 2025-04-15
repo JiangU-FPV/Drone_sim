@@ -7,7 +7,7 @@ timestep = int(supervisor.getBasicTimeStep())
 root_children = supervisor.getRoot().getField("children")
 
 # 读取路径 JSON
-with open("D:/Final_ws/Drone_sim/map/smoothed_path.json", "r") as f:
+with open("../../map/smoothed_path.json", "r") as f:
     data = json.load(f)
 
 path = data["path"]

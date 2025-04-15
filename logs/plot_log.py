@@ -1,5 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+
+import os
 plt.rcParams['font.sans-serif'] = ['SimSun']
 # 全局字体大小设置
 plt.rcParams.update({
@@ -12,7 +14,9 @@ plt.rcParams.update({
 })
 
 # === 修改这里 ===
-CSV_FILE = "D:/Final_ws/Drone_sim/logs/speed_test_alt_log.csv"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(current_dir, 'speed_test_alt_log.csv')
+
 FIELDS_TO_PLOT = [
     "target_speed_z",
     "measure_speed_z"
