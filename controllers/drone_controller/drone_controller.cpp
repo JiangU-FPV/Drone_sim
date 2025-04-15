@@ -37,10 +37,12 @@
 #define RC_SCALE 32.768f
 #define HOLD_THR 537.144
 
-#define ANGLE_TEST
-// #define SPEED_TEST
-// #define POS_TEST
-// #define ASTAR_TEST
+// #define ANGLE_TEST_TILT
+// #define ANGLE_TEST_YAW
+//#define SPEED_TEST
+//#define SPEED_TEST_ALT
+//#define POS_TEST
+#define ASTAR_TEST
 
 // All the webots classes are defined in the "webots" namespace
 using namespace webots;
@@ -130,8 +132,14 @@ struct Point3D {
 // "controllerArgs" field of the Robot node
 int main(int argc, char **argv) {
   std::vector<RobotData> logs;
-
+#ifdef ASTAR_TEST
   std::ifstream file("../../map/smoothed_path.json");
+#endif
+#ifdef POS_TEST
+  std::ifstream file("../../map/figure_eight_path.json");
+#endif
+
+
   if (!file.is_open()) {
       std::cerr << "无法打开文件！" << std::endl;
       return 1;
@@ -153,9 +161,9 @@ int main(int argc, char **argv) {
   }
 
   std::cout << "读取路径点数: " << path.size() << std::endl;
-  for (const auto& pt : path) {
-      std::cout << "(" << pt.x << ", " << pt.y << ", " << pt.z << ")\n";
-  }
+  // for (const auto& pt : path) {
+  //     std::cout << "(" << pt.x << ", " << pt.y << ", " << pt.z << ")\n";
+  // }
 
   // create the Robot instance.
   Robot *robot = new Robot();
@@ -231,7 +239,7 @@ int main(int argc, char **argv) {
   Vector3f proportional_gain = {10.0f, 10.0f, 7.0f};  // 假设是 (roll, pitch, yaw)
   float yaw_weight = 0.5f;  // 偏航权重
   attitude_control.setProportionalGain(proportional_gain, yaw_weight);
-  Vector3f rate_limit = {6.0f, 6.0f, 6.0f}; // 设定最大角速度限制（滚转、俯仰、偏航）
+  Vector3f rate_limit = {7.0f, 7.0f, 6.0f}; // 设定最大角速度限制（滚转、俯仰、偏航）
   attitude_control.setRateLimit(rate_limit);
 
 
@@ -243,7 +251,7 @@ int main(int argc, char **argv) {
   rate_pid[1].setGains(200.0f, 0.0f, 1.0f);
   rate_pid[1].setOutputLimit(150.0f);
   rate_pid[1].setIntegralLimit(10.0f);  
-  rate_pid[2].setGains(500.0f, 0.0f, 5.0f);
+  rate_pid[2].setGains(400.0f, 0.0f, 1.0f);
   rate_pid[2].setOutputLimit(150.0f);
   rate_pid[2].setIntegralLimit(10.0f);  
 
@@ -265,8 +273,8 @@ int main(int argc, char **argv) {
   acc_z_pid.setIntegralLimit(100.0f);
 
   PID vel_z_pid;
-  vel_z_pid.setGains(10.0f,0.1f,0.2f);
-  acc_z_pid.setIntegralLimit(100.0f);
+  vel_z_pid.setGains(10.0f,0.1f,0.01f);
+  acc_z_pid.setIntegralLimit(50.0f);
   vel_z_pid.setOutputLimit(9.8f);
 
   PID pos_z_pid;
@@ -281,9 +289,9 @@ int main(int argc, char **argv) {
   pos_xy_pid[1].setOutputLimit(10.0f);
 
   PID vel_xy_pid[2];
-  vel_xy_pid[0].setGains(0.3f,0.0f,0.03f);
+  vel_xy_pid[0].setGains(0.15f,0.0f,0.05f);
   vel_xy_pid[0].setOutputLimit(0.5f);
-  vel_xy_pid[1].setGains(0.3f,0.0f,0.03f);
+  vel_xy_pid[1].setGains(0.15f,0.0f,0.05f);
   vel_xy_pid[1].setOutputLimit(0.5f);
 
 
@@ -383,12 +391,26 @@ int main(int argc, char **argv) {
 
 
 
-    #ifdef SPEED_TEST
-
-    #endif
+ 
 
     #ifdef POS_TEST
+    if (step != -1)
+    {
+      pos_x_tar  = path[step].x;
+      pos_y_tar  = path[step].y;
+      height_tar = path[step].z;
+      //yaw_tar = 0;
+      if ((robot->getTime()-step_time)>0.1)
+      {
+        step_time = robot->getTime();
+        step +=1;
+      }
 
+      if (step>=(path.size()-1))
+      {
+        step=path.size()-1;
+      }
+    }  
     #endif
 
     #ifdef ASTAR_TEST
@@ -410,14 +432,6 @@ int main(int argc, char **argv) {
       }  
     #endif 
 
-  
-    
-
-
-
-
-
-
     Quatf current_attitude(quat_info[3],quat_info[0], quat_info[1], quat_info[2]);
     
     if (yaw_tar>M_PI)
@@ -437,6 +451,106 @@ int main(int argc, char **argv) {
     pos_xy_pid[1].setSetpoint(pos_y_tar);
     vel_y_tar =  pos_xy_pid[1].update(pos_y,dt);
 
+    #ifdef SPEED_TEST
+    if (step != -1)
+    {
+        yaw_tar = 0;
+        if (step == 0)
+        {
+          vel_x_tar  = 0.0f;
+          vel_y_tar  = 0.0f;
+          if ((robot->getTime()-step_time)>1.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+            
+          }
+        }
+        else if (step == 1)
+        {
+          vel_x_tar  = 5;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>5.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 2)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 3)
+        {
+          vel_x_tar  = -5;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step = 0;
+            writeCSV("../../logs/speed_test_log.csv", logs);
+            log_state = 0;
+          }
+        }          
+    }              
+    #endif
+
+    #ifdef SPEED_TEST_ALT
+    if (step != -1)
+    {
+        yaw_tar = 0;
+        if (step == 0)
+        {
+          vel_x_tar  = 0.0f;
+          vel_y_tar  = 0.0f;
+          if ((robot->getTime()-step_time)>1.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+            
+          }
+        }
+        else if (step == 1)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>5.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 2)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 3)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step = 0;
+            writeCSV("../../logs/speed_test_alt_log.csv", logs);
+            log_state = 0;
+          }
+        }          
+    }       
+    #endif
+
     //速度控制器
     vel_xy_pid[0].setSetpoint(vel_x_tar);
     float acc_x_tar_world = vel_xy_pid[0].update(vel_x,dt);
@@ -452,7 +566,7 @@ int main(int argc, char **argv) {
 
 
 
-    #ifdef ANGLE_TEST
+    #ifdef ANGLE_TEST_TILT
       if (step != -1)
       {
           yaw_tar = 0;
@@ -503,6 +617,58 @@ int main(int argc, char **argv) {
     #endif
 
 
+    #ifdef ANGLE_TEST_YAW
+      if (step != -1)
+      {
+          if (step == 0)
+          {
+            acc_y_tar  = 0.0f;
+            acc_x_tar  = 0.0f;
+            yaw_tar = 0;
+            if ((robot->getTime()-step_time)>1.0)
+            {
+              step_time = robot->getTime();
+              step += 1;
+            }
+          }
+          else if (step == 1)
+          {
+            acc_y_tar  = 0.0f;
+            acc_x_tar  = 0.0f;
+            yaw_tar = M_PI/6;
+            if ((robot->getTime()-step_time)>1.0)
+            {
+              step_time = robot->getTime();
+              step += 1;
+            }
+          }
+          else if (step == 2)
+          {
+            acc_y_tar  = 0.0f;
+            acc_x_tar  = 0.0f;
+            yaw_tar = 0.0f;
+            if ((robot->getTime()-step_time)>1.0)
+            {
+              step_time = robot->getTime();
+              step += 1;
+            }
+          }
+          else if (step == 3)
+          {
+            acc_y_tar  = 0.0f;
+            acc_x_tar  = 0.0f;
+            yaw_tar = -M_PI/6;
+            if ((robot->getTime()-step_time)>1.0)
+            {
+              step_time = robot->getTime();
+              step = 0;
+              writeCSV("../../logs/ang_test_yaw_log.csv", logs);
+              log_state = 0;
+            }
+          }          
+      }         
+    #endif
+    
     float stick_attitude[4];
     // euler_to_quaternion(rc_info[RC_PIT]/2000.0f,rc_info[RC_ROL]/2000.0f,yaw_tar,stick_attitude);
     euler_to_quaternion(acc_y_tar,acc_x_tar,yaw_tar,stick_attitude);
@@ -537,16 +703,73 @@ int main(int argc, char **argv) {
     pos_z_pid.setSetpoint(height_tar);
     float pos_z_out = pos_z_pid.update(gps_info[2],dt);
 
+
+    #ifdef SPEED_TEST_ALT
+    if (step != -1)
+    {
+        yaw_tar = 0;
+        if (step == 0)
+        {
+          vel_x_tar  = 0.0f;
+          vel_y_tar  = 0.0f;
+          pos_z_out  = 0.0f;
+          if ((robot->getTime()-step_time)>1.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 1)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          pos_z_out  = 3.0f;
+          if ((robot->getTime()-step_time)>5.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 2)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          pos_z_out  = 0.0f;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step += 1;
+          }
+        }
+        else if (step == 3)
+        {
+          vel_x_tar  = 0;
+          vel_y_tar  = 0;
+          pos_z_out  = -3.0f;
+          if ((robot->getTime()-step_time)>3.0)
+          {
+            step_time = robot->getTime();
+            step = 0;
+            writeCSV("../../logs/speed_test_alt_log.csv", logs);
+            log_state = 0;
+          }
+        }          
+    }       
+    #endif
+
+
     vel_z_pid.setSetpoint(pos_z_out);
     float vel_z_out = vel_z_pid.update(vel_z,dt);
+
+
 
     acc_z_pid.setSetpoint(vel_z_out);
     float acc_z_out = acc_z_pid.update(acc_info[2]-9.8,dt);    
     //float thrr_out = linear_scale(rc_info[RC_THR],-1000,1000,0,1000);
-    float thrr_out = vel_z_out*50+HOLD_THR + pos_z_out*5;
-    if (thrr_out<=300)
+    float thrr_out = vel_z_out*50+HOLD_THR;
+    if (thrr_out<=200)
     {
-     thrr_out=300;
+     thrr_out=200;
     }
     
    // float thrr_out = 550;
