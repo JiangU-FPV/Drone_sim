@@ -7,7 +7,7 @@ from scipy.ndimage import binary_dilation
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import BSpline
 
-def smooth_path_with_bspline(path_voxels, resolution, degree=5):
+def smooth_path_with_bspline(path_voxels, resolution, degree=3):
     # 将路径点转为列表
     path_voxels = np.array(path_voxels)
     path_x, path_y, path_z = path_voxels[:, 0], path_voxels[:, 1], path_voxels[:, 2]
@@ -182,7 +182,6 @@ def smooth_path_with_catmull_rom(path_voxels, resolution, samples_per_segment=20
 
 
 def rdp_simplify(points, epsilon):
-    """Ramer–Douglas–Peucker 算法简化路径"""
     def point_line_distance(point, start, end):
         if np.all(start == end):
             return np.linalg.norm(point - start)
@@ -207,6 +206,20 @@ def rdp_simplify(points, epsilon):
     return rdp(np.array(points), epsilon)
 
 
+# 创建球形结构核
+def create_spherical_struct(radius):
+    """生成球形结构核"""
+    L = 2 * radius + 1
+    center = radius
+    struct = np.zeros((L, L, L), dtype=bool)
+    for x in range(L):
+        for y in range(L):
+            for z in range(L):
+                if np.linalg.norm(np.array([x, y, z]) - center) <= radius:
+                    struct[x, y, z] = True
+    return struct
+
+
 # 从 JSON 读取地图
 with open("map/voxel_map.json", "r") as f:
     voxel_data = json.load(f)
@@ -217,20 +230,23 @@ size = voxel_data["size"]
 voxel_array = np.array(voxel_data["data"])
 
 # === Step 1: 膨胀障碍物 ===
-inflate_distance = 0.75  # 单位：米
+inflate_distance = 1  # 单位：米
 inflate_radius = int(np.ceil(inflate_distance / map_resolution))  # 转为体素单位
 structure = np.ones((2 * inflate_radius + 1,) * 3)  # 立方体结构
+
+sphere_struct = create_spherical_struct(inflate_radius) # 球体结构
+
 obstacle_mask = voxel_array == 1
-inflated_mask = binary_dilation(obstacle_mask, structure=structure)
+inflated_mask = binary_dilation(obstacle_mask, structure=sphere_struct)
 inflated_voxel_array = np.where(inflated_mask, 1, 0)  # 新地图
 
 # 起点和终点（这里使用的是 voxel 坐标）
 start_world = (1.0, 1.0, 2.0)
-goal_world = (29.0, 29.0, 3.0)
+goal_world = (29.0, 29.0, 2.0)
 start = tuple(int(coord / map_resolution) for coord in start_world)
 goal = tuple(int(coord / map_resolution) for coord in goal_world)
 
-z_weight = 25  # 垂直惩罚因子
+z_weight = 10  # 垂直惩罚因子
 
 # 6方向邻居（在3D空间里）
 # neighbors = [(0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)]
@@ -242,56 +258,59 @@ neighbors_3d = [
     (1, 1, 1), (1, 1, -1), (1, -1, 1), (1, -1, -1), (-1, 1, 1), (-1, 1, -1),
     (-1, -1, 1), (-1, -1, -1)
 ]
+
+neighbors_3d_g = [np.sqrt(dx**2 + dy**2 + dz**2) for dx, dy, dz in neighbors_3d]
+
 # A* 算法实现
-def a_star(voxel_map, start, goal):
-    def heuristic(a, b):
-        dz = abs(a[2] - b[2])
-        dx_dy = abs(a[0] - b[0]) + abs(a[1] - b[1])
-        return dx_dy + dz * z_weight
-    # A* 算法中的欧几里得启发式函数
-    def euclidean_heuristic(a, b):
-        dx = a[0] - b[0]
-        dy = a[1] - b[1]
-        dz = (a[2] - b[2]) * z_weight
-        return np.sqrt(dx**2 + dy**2 + dz**2)  # 欧几里得距离
+# def a_star(voxel_map, start, goal):
+#     def heuristic(a, b):
+#         dz = abs(a[2] - b[2])
+#         dx_dy = abs(a[0] - b[0]) + abs(a[1] - b[1])
+#         return dx_dy + dz * z_weight
+#     # A* 算法中的欧几里得启发式函数
+#     def euclidean_heuristic(a, b):
+#         dx = a[0] - b[0]
+#         dy = a[1] - b[1]
+#         dz = (a[2] - b[2]) * z_weight
+#         return np.sqrt(dx**2 + dy**2 + dz**2)  # 欧几里得距离
     
-    grid_z, grid_x, grid_y = voxel_map.shape
+#     grid_z, grid_x, grid_y = voxel_map.shape
 
-        # 初始化开放列表和闭合列表
-    open_list = []
-    heapq.heappush(open_list, (0 + euclidean_heuristic(start, goal), 0, start))  # (f, g, node)
-    came_from = {}  # 记录路径
-    g_score = {start: 0}  # 到起点的代价
-    f_score = {start: euclidean_heuristic(start, goal)}  # 启发式代价 f = g + h
+#         # 初始化开放列表和闭合列表
+#     open_list = []
+#     heapq.heappush(open_list, (0 + euclidean_heuristic(start, goal), 0, start))  # (f, g, node)
+#     came_from = {}  # 记录路径
+#     g_score = {start: 0}  # 到起点的代价
+#     f_score = {start: euclidean_heuristic(start, goal)}  # 启发式代价 f = g + h
 
-    while open_list:
-        _, current_g, current = heapq.heappop(open_list)
+#     while open_list:
+#         _, current_g, current = heapq.heappop(open_list)
 
-        # 如果到达终点
-        if current == goal:
-            path = []
-            while current in came_from:
-                path.append(current)
-                current = came_from[current]
-            path.append(start)
-            path.reverse()
-            return path
+#         # 如果到达终点
+#         if current == goal:
+#             path = []
+#             while current in came_from:
+#                 path.append(current)
+#                 current = came_from[current]
+#             path.append(start)
+#             path.reverse()
+#             return path
 
-        # 遍历邻居
-        for dx, dy, dz in neighbors_3d:
-            neighbor = (current[0] + dx, current[1] + dy, current[2] + dz)
+#         # 遍历邻居
+#         for dx, dy, dz in neighbors_3d:
+#             neighbor = (current[0] + dx, current[1] + dy, current[2] + dz)
 
-            # 检查邻居是否在地图内，并且不是障碍物
-            if 0 <= neighbor[0] < grid_x and 0 <= neighbor[1] < grid_y and 0 <= neighbor[2] < grid_z:
-                if voxel_map[neighbor[2], neighbor[1], neighbor[0]] == 0:  # 0是空地
-                    tentative_g_score = current_g + 1  # 代价假设每步为1
-                    if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                        came_from[neighbor] = current
-                        g_score[neighbor] = tentative_g_score
-                        f_score[neighbor] = tentative_g_score + euclidean_heuristic(neighbor, goal)
-                        heapq.heappush(open_list, (f_score[neighbor], tentative_g_score, neighbor))
+#             # 检查邻居是否在地图内，并且不是障碍物
+#             if 0 <= neighbor[0] < grid_x and 0 <= neighbor[1] < grid_y and 0 <= neighbor[2] < grid_z:
+#                 if voxel_map[neighbor[2], neighbor[1], neighbor[0]] == 0:  # 0是空地
+#                     tentative_g_score = current_g + 1  # 代价假设每步为1
+#                     if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
+#                         came_from[neighbor] = current
+#                         g_score[neighbor] = tentative_g_score
+#                         f_score[neighbor] = tentative_g_score + euclidean_heuristic(neighbor, goal)
+#                         heapq.heappush(open_list, (f_score[neighbor], tentative_g_score, neighbor))
 
-    return None  # 如果没有路径
+#     return None  # 如果没有路径
 
     # open_list = []
     # heapq.heappush(open_list, (0 + heuristic(start, goal), 0, start))
@@ -325,6 +344,58 @@ def a_star(voxel_map, start, goal):
     #                     heapq.heappush(open_list, (f_score[neighbor], tentative_g_score, neighbor))
 
     # return None  # 无路径
+def a_star(voxel_map, start, goal):
+    def euclidean_heuristic(a, b):
+        dx = a[0] - b[0]
+        dy = a[1] - b[1]
+        dz = (a[2] - b[2]) * z_weight
+        return np.sqrt(dx**2 + dy**2 + dz**2)
+
+    grid_z, grid_x, grid_y = voxel_map.shape
+
+    open_list = []
+    heapq.heappush(open_list, (euclidean_heuristic(start, goal), 0, start))  # (f, g, node)
+    
+    came_from = {}
+    g_score = {start: 0}
+    f_score = {start: euclidean_heuristic(start, goal)}
+    closed_set = set()
+
+    while open_list:
+        _, current_g, current = heapq.heappop(open_list)
+
+        if current in closed_set:
+            continue
+        closed_set.add(current)
+
+        if current == goal:
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            path.reverse()
+            return path
+
+        for (dx, dy, dz), move_cost in zip(neighbors_3d, neighbors_3d_g):
+            neighbor = (current[0] + dx, current[1] + dy, current[2] + dz)
+
+            if 0 <= neighbor[0] < grid_x and 0 <= neighbor[1] < grid_y and 0 <= neighbor[2] < grid_z:
+                if voxel_map[neighbor[2], neighbor[1], neighbor[0]] != 0:
+                    continue  # 避开障碍
+
+                if neighbor in closed_set:
+                    continue
+                
+                tentative_g_score = current_g + move_cost# 可根据方向调整更精细的代价
+                
+                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    f = tentative_g_score + euclidean_heuristic(neighbor, goal)
+                    heapq.heappush(open_list, (f, tentative_g_score, neighbor))
+
+    return None  # 没有路径
 
 # === Step 2: 计算路径 ===
 path = a_star(inflated_voxel_array, start, goal)
@@ -349,9 +420,7 @@ zs, ys, xs = inflated_occupied[:, 0], inflated_occupied[:, 1], inflated_occupied
 xs = xs * map_resolution + map_resolution / 2
 ys = ys * map_resolution + map_resolution / 2
 zs = zs * map_resolution + map_resolution / 2
-ax.scatter(xs, ys, zs, c='cyan', alpha=0.2, marker='s', s=10, label="Inflated Area")
-
-
+ax.scatter(xs, ys, zs, c='green', alpha=0.2, marker='s', s=10, label="Inflated Area")
 
 # 可视化路径
 if path:
