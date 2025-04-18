@@ -23,7 +23,7 @@ for point in path:
           appearance Appearance {{
             material Material {{
               diffuseColor 1 0 0        # 绿色
-              transparency 0          # 比较透明
+              transparency 0.5          # 比较透明
             }}
           }}
           geometry Sphere {{

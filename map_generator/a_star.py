@@ -246,7 +246,7 @@ goal_world = (29.0, 29.0, 2.0)
 start = tuple(int(coord / map_resolution) for coord in start_world)
 goal = tuple(int(coord / map_resolution) for coord in goal_world)
 
-z_weight = 10  # 垂直惩罚因子
+z_weight = 20  # 垂直惩罚因子
 
 # 6方向邻居（在3D空间里）
 # neighbors = [(0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)]

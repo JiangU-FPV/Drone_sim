@@ -231,7 +231,7 @@ int main(int argc, char **argv) {
   motor4->setPosition(INFINITY);  // 设置为无限位置模式以使用速度控制
   motor4->setVelocity(0.0);       // 初始速度为 0  
   
-
+  led->set(1);
     // // 创建姿态控制对象
   AttitudeControl attitude_control;
 
@@ -332,6 +332,9 @@ int main(int argc, char **argv) {
   int step = -1;
   double step_time = 0;
   uint8_t log_state = 0;
+
+
+  
   // Main loop:
   // - perform simulation steps until Webots is stopping the controller
   while (robot->step(timeStep) != -1) {
@@ -687,7 +690,7 @@ int main(int argc, char **argv) {
       }
     }
     // Enter here functions to send actuator commands, like:
-    led->set(1);
+    
 
     rate_pid[0].setSetpoint(-angular_rate_setpoint(0));
     float pitch_out = rate_pid[0].update(-gyro_info[0],dt);
