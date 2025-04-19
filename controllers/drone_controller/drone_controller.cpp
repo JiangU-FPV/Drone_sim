@@ -74,7 +74,20 @@ struct RobotData {
   float measure_angle_pitch;
   float measure_angle_roll; 
   float measure_angle_yaw;
+  float measure_liner_speed;
 };
+
+uint8_t in_pos(float a,float b, float dead_zone)
+{
+  if (m_abs(a-b)<=dead_zone)
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+}
 
 void writeCSV(const std::string& filename, const std::vector<RobotData>& dataList) {
   std::ofstream file(filename);
@@ -90,7 +103,7 @@ void writeCSV(const std::string& filename, const std::vector<RobotData>& dataLis
        << "target_angle_pitch,target_angle_roll,target_angle_yaw,"
        << "measure_position_x,measure_position_y,measure_position_z,"
        << "measure_speed_x,measure_speed_y,measure_speed_z,"
-       << "measure_angle_pitch,measure_angle_roll,measure_angle_yaw\n";
+       << "measure_angle_pitch,measure_angle_roll,measure_angle_yaw,measure_liner_speed\n";
 
   for (const auto& d : dataList) {
       file << d.timestamp << ","
@@ -99,11 +112,15 @@ void writeCSV(const std::string& filename, const std::vector<RobotData>& dataLis
            << d.target_angle_pitch << "," << d.target_angle_roll << "," << d.target_angle_yaw << ","
            << d.measure_position_x << "," << d.measure_position_y << "," << d.measure_position_z << ","
            << d.measure_speed_x << "," << d.measure_speed_y << "," << d.measure_speed_z << ","
-           << d.measure_angle_pitch << "," << d.measure_angle_roll << "," << d.measure_angle_yaw << "\n";
+           << d.measure_angle_pitch << "," << d.measure_angle_roll << "," << d.measure_angle_yaw << "," <<d.measure_liner_speed<<"\n";
   }
 
   file.close();
   std::cout << "✅ 数据已保存为: " << filename << std::endl;
+}
+
+double calculateLinearSpeed(double vx, double vy, double vz) {
+  return std::sqrt(vx * vx + vy * vy + vz * vz);
 }
 
 void delay(Robot *robot, int milliseconds) {
@@ -184,7 +201,7 @@ int main(int argc, char **argv) {
  */
   Joystick rc;
   rc.enable(timeStep);
-  delay(robot,1000);
+  delay(robot,100);
   // 获取手柄模型
   std::string model = rc.getModel();
   if (model.empty()) {
@@ -242,7 +259,7 @@ int main(int argc, char **argv) {
   Vector3f rate_limit = {7.0f, 7.0f, 6.0f}; // 设定最大角速度限制（滚转、俯仰、偏航）
   attitude_control.setRateLimit(rate_limit);
 
-
+  float drone_spd;
   PID rate_pid[3];
     // 设置初始配置
   rate_pid[0].setGains(200.0f, 0.0f, 1.0f);
@@ -352,14 +369,14 @@ int main(int argc, char **argv) {
     rpy_ptich = rpy_info[0];
     rpy_roll  = rpy_info[1];
     rpy_yaw   = rpy_info[2];
-    std::cout<<rpy_ptich<<", "<<rpy_roll<<", "<<rpy_yaw<<std::endl;
+    // std::cout<<rpy_ptich<<", "<<rpy_roll<<", "<<rpy_yaw<<std::endl;
 
     pos_x = gps_info[0];
     pos_y = gps_info[1];
     pos_z = gps_info[2];
 
-    std::cout<<"pos_x_tar"<<pos_x_tar<<std::endl;
-    std::cout<<"pos_y_tar"<<pos_y_tar<<std::endl;
+    // std::cout<<"pos_x_tar"<<pos_x_tar<<std::endl;
+    // std::cout<<"pos_y_tar"<<pos_y_tar<<std::endl;
 
     vel_x = 0.8*(gps_info[0]-prev_pos_x)/dt+0.2*vel_x;
     vel_y = 0.8*(gps_info[1]-prev_pos_y)/dt+0.2*vel_y;
@@ -431,6 +448,14 @@ int main(int argc, char **argv) {
         if (step>=(path.size()-1))
         {
           step=path.size()-1;
+          if (in_pos(pos_x,pos_x_tar,0.05)&&in_pos(pos_y,pos_y_tar,0.05)&&in_pos(pos_z,height_tar,0.05))
+          {
+            if (log_state)
+            {
+              writeCSV("../../logs/astar_test_log.csv", logs);
+            }
+            log_state = 0;
+          }
         }
       }  
     #endif 
@@ -563,8 +588,8 @@ int main(int argc, char **argv) {
 
     acc_x_tar =  acc_x_tar_world*cos(rpy_yaw) + acc_y_tar_world*sin(rpy_yaw);
     acc_y_tar =  -acc_x_tar_world*sin(rpy_yaw) + acc_y_tar_world*cos(rpy_yaw);
-    std::cout<<"x_angle"<<acc_x_tar<<std::endl;
-    std::cout<<"y_angle"<<acc_y_tar<<std::endl;
+    // std::cout<<"x_angle"<<acc_x_tar<<std::endl;
+    // std::cout<<"y_angle"<<acc_y_tar<<std::endl;
 
 
 
@@ -805,6 +830,10 @@ int main(int argc, char **argv) {
     robot_data.measure_angle_pitch = rpy_ptich;
     robot_data.measure_angle_roll = rpy_roll;
     robot_data.measure_angle_yaw = rpy_yaw;
+    robot_data.measure_liner_speed = calculateLinearSpeed(vel_x,vel_y,vel_z);
+    //std::cout<<"Speed: "<<robot_data.measure_liner_speed<<"m/s"<<std::endl;
+
+
     if (log_state)
     {
       logs.push_back(robot_data);

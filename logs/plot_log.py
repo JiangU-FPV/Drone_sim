@@ -15,11 +15,12 @@ plt.rcParams.update({
 
 # === 修改这里 ===
 current_dir = os.path.dirname(os.path.abspath(__file__))
-CSV_FILE = os.path.join(current_dir, 'speed_test_alt_log.csv')
+CSV_FILE = os.path.join(current_dir, 'astar_test_log.csv')
 
 FIELDS_TO_PLOT = [
-    "target_speed_z",
-    "measure_speed_z"
+    # "target_speed_z",
+    # "measure_speed_z"
+    "measure_liner_speed"
 ]
 # =================
 
@@ -36,15 +37,24 @@ def plot_data(df, fields):
     for field in fields:
         if field in df.columns:
             plt.plot(df["timestamp"], df[field], label=field)
+
+            # 👈 添加：计算并打印平均值
+            mean_value = df[field].mean()
+            print(f"✅ {field} 的平均值为: {mean_value:.3f}")
+
+            # 👈 可选：将平均值画在图上
+            plt.axhline(y=mean_value, color='r', linestyle='--', linewidth=1.5, label=f'{field} 平均值')
+
         else:
             print(f"⚠️ 字段不存在: {field}")
     plt.xlabel("Timestamp(s)")
     plt.ylabel("Value(m/s)")
-    plt.title("Z轴速度控制器阶跃响应")
+    plt.title("速度随时间关系")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
 
 def main():
     df = load_csv(CSV_FILE)

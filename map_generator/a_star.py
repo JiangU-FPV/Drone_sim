@@ -6,7 +6,16 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.ndimage import binary_dilation
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import BSpline
-
+plt.rcParams['font.sans-serif'] = ['SimSun']
+# 全局字体大小设置
+plt.rcParams.update({
+    'font.size': 18,        # 全局字体
+    'axes.titlesize': 20,   # 标题字体
+    'axes.labelsize': 18,   # 坐标轴标签
+    'xtick.labelsize': 16,  # X轴刻度
+    'ytick.labelsize': 16,  # Y轴刻度
+    'legend.fontsize': 18,  # 图例
+})
 def smooth_path_with_bspline(path_voxels, resolution, degree=3):
     # 将路径点转为列表
     path_voxels = np.array(path_voxels)
@@ -242,7 +251,7 @@ inflated_voxel_array = np.where(inflated_mask, 1, 0)  # 新地图
 
 # 起点和终点（这里使用的是 voxel 坐标）
 start_world = (1.0, 1.0, 2.0)
-goal_world = (29.0, 29.0, 2.0)
+goal_world = (29.0, 1.0, 2.0)
 start = tuple(int(coord / map_resolution) for coord in start_world)
 goal = tuple(int(coord / map_resolution) for coord in goal_world)
 
@@ -413,14 +422,14 @@ zs, ys, xs = original_occupied[:, 0], original_occupied[:, 1], original_occupied
 xs = xs * map_resolution + map_resolution / 2
 ys = ys * map_resolution + map_resolution / 2
 zs = zs * map_resolution + map_resolution / 2
-ax.scatter(xs, ys, zs, c='red', marker='s', s=10, label="Original Obstacle")
+ax.scatter(xs, ys, zs, c='red', marker='s', s=10, label="障碍物")
 
 # 膨胀区域：橙色 + 半透明
 zs, ys, xs = inflated_occupied[:, 0], inflated_occupied[:, 1], inflated_occupied[:, 2]
 xs = xs * map_resolution + map_resolution / 2
 ys = ys * map_resolution + map_resolution / 2
 zs = zs * map_resolution + map_resolution / 2
-ax.scatter(xs, ys, zs, c='green', alpha=0.2, marker='s', s=10, label="Inflated Area")
+ax.scatter(xs, ys, zs, c='green', alpha=0.2, marker='s', s=10, label="膨胀区域")
 
 # 可视化路径
 if path:
@@ -429,16 +438,16 @@ if path:
     path_x = np.array(path_x) * map_resolution + map_resolution / 2
     path_y = np.array(path_y) * map_resolution + map_resolution / 2
     path_z = np.array(path_z) * map_resolution + map_resolution / 2
-    ax.plot(path_x, path_y, path_z, color='blue', marker='o', markersize=3, linestyle='--', label="Raw Path")
+    ax.plot(path_x, path_y, path_z, color='blue', marker='o', markersize=3, linestyle='--', label="A*原始路径")
     # 路径简化（黑色关键点）
     simplified = rdp_simplify(path, epsilon=1.5)
     simp_x = np.array([p[0] for p in simplified]) * map_resolution + map_resolution / 2
     simp_y = np.array([p[1] for p in simplified]) * map_resolution + map_resolution / 2
     simp_z = np.array([p[2] for p in simplified]) * map_resolution + map_resolution / 2
-    ax.plot(simp_x, simp_y, simp_z, color='black', marker='x', markersize=5, linestyle='-', label="Simplified Path")
+    ax.plot(simp_x, simp_y, simp_z, color='black', marker='x', markersize=5, linestyle='-', label="RDP简化后路径")
     # 平滑路径（曲线）
     smoothed_x, smoothed_y, smoothed_z = smooth_path_with_catmull_rom(simplified, map_resolution)
-    ax.plot(smoothed_x, smoothed_y, smoothed_z, color='deepskyblue', linewidth=2, label="Smoothed Path")
+    ax.plot(smoothed_x, smoothed_y, smoothed_z, color='deepskyblue', linewidth=2, label="平滑后路径")
     # === 导出平滑路径到 JSON ===
     smoothed_path_world = list(zip(smoothed_x.tolist(), smoothed_y.tolist(), smoothed_z.tolist()))
     output_data = {
@@ -454,18 +463,19 @@ print("平滑路径已导出到 smoothed_path.json ✅")
 # 起点终点
 start_x, start_y, start_z = start[0] * map_resolution + map_resolution / 2, start[1] * map_resolution + map_resolution / 2, start[2] * map_resolution + map_resolution / 2
 goal_x, goal_y, goal_z = goal[0] * map_resolution + map_resolution / 2, goal[1] * map_resolution + map_resolution / 2, goal[2] * map_resolution + map_resolution / 2
-ax.scatter(start_x, start_y, start_z, color='green', s=100, label="Start")
-ax.scatter(goal_x, goal_y, goal_z, color='purple', s=100, label="Goal")
+ax.scatter(start_x, start_y, start_z, color='green', s=100, label="起点")
+ax.scatter(goal_x, goal_y, goal_z, color='purple', s=100, label="目标点")
 
 # 轴标签与范围
 ax.set_xlabel('X (m)')
 ax.set_ylabel('Y (m)')
 ax.set_zlabel('Z (m)')
-ax.set_title('3D Path Planning with A* + Obstacle Inflation')
+# ax.set_title('3D Path Planning with A* + Obstacle Inflation')
 ax.set_xlim(0, size[0] * map_resolution)
 ax.set_ylim(0, size[1] * map_resolution)
 ax.set_zlim(0, size[2] * map_resolution)
 ax.legend()
 
 plt.tight_layout()
+ax.view_init(elev=45, azim=-135)
 plt.show()
