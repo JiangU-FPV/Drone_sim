@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-plt.rcParams['font.sans-serif'] = ['SimSun']
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
 def catmull_rom(p0, p1, p2, p3, num_points=20):
     """
     计算一段 Catmull-Rom 样条上的插值点

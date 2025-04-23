@@ -6,14 +6,14 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.ndimage import binary_dilation
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import BSpline
-plt.rcParams['font.sans-serif'] = ['SimSun']
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
 # 全局字体大小设置
 plt.rcParams.update({
     'font.size': 18,        # 全局字体
     'axes.titlesize': 20,   # 标题字体
     'axes.labelsize': 18,   # 坐标轴标签
-    'xtick.labelsize': 16,  # X轴刻度
-    'ytick.labelsize': 16,  # Y轴刻度
+    'xtick.labelsize': 20,  # X轴刻度
+    'ytick.labelsize': 20,  # Y轴刻度
     'legend.fontsize': 18,  # 图例
 })
 def smooth_path_with_bspline(path_voxels, resolution, degree=3):

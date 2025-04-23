@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-plt.rcParams['font.sans-serif'] = ['Times New Roman']  # 设置字体为 Times New Roman
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
 plt.rcParams.update({
     'font.size': 18,        # 全局字体
     'axes.titlesize': 20,   # 标题字体
@@ -92,6 +92,7 @@ def set_axes_equal(ax):
 plt.tight_layout()
 set_axes_equal(ax)
 
-ax.view_init(elev=90, azim=-90)
+# ax.view_init(elev=90, azim=-90)
+ax.view_init(elev=45, azim=-135)
 
 plt.show()

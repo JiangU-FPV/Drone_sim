@@ -1,6 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
-plt.rcParams['font.sans-serif'] = ['SimSun']
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
+plt.rcParams.update({
+    'font.size': 18,        # 全局字体
+    'axes.titlesize': 20,   # 标题字体
+    'axes.labelsize': 20,   # 坐标轴标签
+    'xtick.labelsize': 20,  # X轴刻度
+    'ytick.labelsize': 20,  # Y轴刻度
+    'legend.fontsize': 18,  # 图例
+})
 # 计算点到线段的垂直距离
 def perpendicular_distance(point, start, end):
     if np.all(start == end):
