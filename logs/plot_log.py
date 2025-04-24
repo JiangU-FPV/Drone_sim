@@ -2,15 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import os
-plt.rcParams['font.sans-serif'] = ['SimSun']
+plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
 # 全局字体大小设置
 plt.rcParams.update({
-    'font.size': 18,        # 全局字体
-    'axes.titlesize': 20,   # 标题字体
+    'font.size': 20,        # 全局字体
+    'axes.titlesize': 18,   # 标题字体
     'axes.labelsize': 18,   # 坐标轴标签
-    'xtick.labelsize': 16,  # X轴刻度
-    'ytick.labelsize': 16,  # Y轴刻度
-    'legend.fontsize': 18,  # 图例
+    'xtick.labelsize': 18,  # X轴刻度
+    'ytick.labelsize': 18,  # Y轴刻度
+    'legend.fontsize': 20,  # 图例
 })
 
 # === 修改这里 ===
@@ -18,6 +18,13 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 CSV_FILE = os.path.join(current_dir, 'astar_test_log.csv')
 
 FIELDS_TO_PLOT = [
+    # "target_angle_roll",
+    # "measure_angle_roll"
+    # "target_angle_yaw",
+    # "measure_angle_yaw"
+    # "target_speed_x",
+    # "measure_speed_x"
+
     # "target_speed_z",
     # "measure_speed_z"
     "measure_liner_speed"
@@ -48,8 +55,8 @@ def plot_data(df, fields):
         else:
             print(f"⚠️ 字段不存在: {field}")
     plt.xlabel("Timestamp(s)")
-    plt.ylabel("Value(m/s)")
-    plt.title("速度随时间关系")
+    plt.ylabel("Speed(m/s)")
+    # plt.title("Roll轴姿态控制器阶跃响应")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()

@@ -1,6 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = ["Times New Roman", "SimSun"]
+plt.rcParams.update({
+    'font.size': 18,        # 全局字体
+    'axes.titlesize': 20,   # 标题字体
+    'axes.labelsize': 18,   # 坐标轴标签
+    'xtick.labelsize': 20,  # X轴刻度
+    'ytick.labelsize': 20,  # Y轴刻度
+    'legend.fontsize': 18,  # 图例
+})
 def catmull_rom(p0, p1, p2, p3, num_points=20):
     """
     计算一段 Catmull-Rom 样条上的插值点
@@ -52,7 +60,7 @@ plt.figure(figsize=(8, 6))
 control_points = np.array(control_points)
 plt.plot(control_points[:, 0], control_points[:, 1], 'ro--', label='原始路径')
 plt.plot(smooth_curve[:, 0], smooth_curve[:, 1], 'b-', label='Catmull-Rom 平滑路径')
-plt.title('Catmull-Rom 样条路径平滑')
+# plt.title('Catmull-Rom 样条路径平滑')
 plt.legend()
 plt.axis('equal')
 plt.grid(True)
